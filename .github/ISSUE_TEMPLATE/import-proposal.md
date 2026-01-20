@@ -94,7 +94,7 @@ assignees: ''
 ## Checklist
 
 Before submitting this proposal:
-- [ ] I have read the [Contributing Guidelines](../CONTRIBUTING.md)
+- [ ] I have read the [Contributing Guidelines](../../CONTRIBUTING.md)
 - [ ] I have verified the data source is legitimate
 - [ ] I have confirmed the license is open or can be made open
 - [ ] I have checked for similar existing imports
