@@ -178,7 +178,7 @@ All nutritional values should be **per 100g or 100ml**.
 | `sodium` | Sodium | Number | g | 0.043 |
 | `sodium_g` | Sodium (explicit) | Number | g | 0.043 |
 
-**Note**: If you have sodium, calculate salt as: `salt = sodium × 2.5`
+**Note**: If you have sodium in grams, calculate salt as: `salt (g) = sodium (g) × 2.5`
 
 ### Additional Nutrients
 

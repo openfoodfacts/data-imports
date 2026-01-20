@@ -84,9 +84,9 @@ Fixes #[issue-number]
 ## Checklist
 
 Before requesting review:
-- [ ] I have read the [Contributing Guidelines](../CONTRIBUTING.md)
-- [ ] Data follows [format specifications](../docs/data-formats.md)
-- [ ] Quality guidelines met (see [quality-guidelines.md](../docs/quality-guidelines.md))
+- [ ] I have read the [Contributing Guidelines](CONTRIBUTING.md)
+- [ ] Data follows [format specifications](docs/data-formats.md)
+- [ ] Quality guidelines met (see [quality-guidelines.md](docs/quality-guidelines.md))
 - [ ] All files properly organized in directory structure
 - [ ] Documentation is complete
 - [ ] License is open and compatible

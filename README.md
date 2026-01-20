@@ -178,7 +178,7 @@ To maintain high-quality data in Open Food Facts:
 
 ### Current Imports
 
-- **[KFC Nutritional Values](KFCNutritionnalValues.xlsx)** - Nutritional data for KFC menu items
+- **[KFC Nutritional Values](producers/kfc/data/KFCNutritionnalValues.xlsx)** - Nutritional data for KFC menu items
 
 ### Template Structure
 

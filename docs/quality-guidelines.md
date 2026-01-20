@@ -444,7 +444,7 @@ Need help improving your data quality?
 - ✅ Valuable for research
 - ✅ Stronger partnerships
 
-**Take the time to ensure quality**—it's worth it!
+**Take the time to ensure quality** - it's worth it!
 
 ---
 
