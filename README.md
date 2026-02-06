@@ -1,7 +1,7 @@
 # Open Food Facts - Data Imports
 
 [![Project Status](https://img.shields.io/badge/status-active-brightgreen.svg)](https://github.com/openfoodfacts/data-imports)
-[![License](https://img.shields.io/badge/license-ODbL-blue.svg)](https://opendatacommons.org/licenses/odbl/)
+[![OFF License](https://img.shields.io/badge/license-ODbL-blue.svg)](https://opendatacommons.org/licenses/odbl/)
 [![Contributors](https://img.shields.io/github/contributors/openfoodfacts/data-imports.svg)](https://github.com/openfoodfacts/data-imports/graphs/contributors)
 
 Welcome to the Open Food Facts Data Imports repository! 🌍 🥫 📊
@@ -205,7 +205,7 @@ See [templates/](templates/) for examples and starter files.
 
 ## 📄 License
 
-The database contents are licensed under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).
+The Open Food Facts database contents are licensed under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).
 
 Individual datasets may have additional licenses - check each import's README for specific licensing terms.
 
