@@ -48,8 +48,10 @@ databases/serbian-prices/
 │       ├── serbian_prices_open_prices.csv     # For Open Prices
 │       └── processing_stats.json              # Processing statistics
 └── scripts/
+    ├── run_import.py                     # Main runner (orchestrates workflow)
     ├── harvest_data.py                   # Download data from API
     ├── process_data.py                   # Process and generate outputs
+    ├── test_workflow.py                  # Validate workflow with test data
     └── explore_data.py                   # Data exploration tool
 ```
 
@@ -163,25 +165,131 @@ pip install requests pandas beautifulsoup4 lxml
 
 ### Running the Import
 
+#### Option 1: Using the Main Runner Script (Recommended)
+
 ```bash
-# 1. Download data from data.gov.rs
 cd databases/serbian-prices/scripts
+
+# Full import (harvest + process)
+python3 run_import.py
+
+# Test mode (quick validation without downloading)
+python3 run_import.py --test-only
+```
+
+#### Option 2: Running Scripts Individually
+
+```bash
+cd databases/serbian-prices/scripts
+
+# 1. Download data from data.gov.rs
 python3 harvest_data.py
 
 # 2. Process data and generate outputs
 python3 process_data.py
 
-# 3. (Optional) Explore data structure
+# 3. (Optional) Test the workflow
+python3 test_workflow.py
+
+# 4. (Optional) Explore data structure
 python3 explore_data.py
 ```
 
 ### Automation
 
-For periodic updates, you can set up a cron job:
+For periodic updates, you can set up a cron job or scheduled task:
+
+#### Using cron (Linux/Mac)
 
 ```bash
 # Run weekly (every Monday at 2 AM)
-0 2 * * 1 cd /path/to/data-imports/databases/serbian-prices/scripts && python3 harvest_data.py && python3 process_data.py
+0 2 * * 1 cd /path/to/data-imports/databases/serbian-prices/scripts && /usr/bin/python3 run_import.py >> /var/log/serbian-prices-import.log 2>&1
+```
+
+#### Using systemd timer (Linux)
+
+Create a systemd service file:
+
+```ini
+# /etc/systemd/system/serbian-prices-import.service
+[Unit]
+Description=Serbian Price Database Import
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/path/to/data-imports/databases/serbian-prices/scripts
+ExecStart=/usr/bin/python3 run_import.py
+User=your-user
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Create a timer file:
+
+```ini
+# /etc/systemd/system/serbian-prices-import.timer
+[Unit]
+Description=Serbian Price Database Import Timer
+Requires=serbian-prices-import.service
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable serbian-prices-import.timer
+sudo systemctl start serbian-prices-import.timer
+```
+
+#### Using GitHub Actions
+
+Create `.github/workflows/serbian-prices-import.yml`:
+
+```yaml
+name: Serbian Prices Import
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # Every Monday at 2 AM UTC
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r databases/serbian-prices/requirements.txt
+      
+      - name: Run import
+        run: |
+          cd databases/serbian-prices/scripts
+          python3 run_import.py
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: serbian-prices-data
+          path: databases/serbian-prices/data/processed/
 ```
 
 ## Integration Plan
