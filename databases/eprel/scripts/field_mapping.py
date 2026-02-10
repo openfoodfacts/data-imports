@@ -4,6 +4,10 @@ Maps the raw EPREL API response fields for smartphones/tablets to the
 colon-separated hierarchical field names used by Open Products Facts (OPF).
 """
 
+# Auto-generated OPF field names (not directly from EPREL API fields)
+OPF_FIELD_EC_ENERGY_LABEL_URL = "ec_energy_label:url"
+OPF_FIELD_IP_RATING_NUMBER = "ingress_protection_rating:ip:number"
+
 # Mapping of EPREL API field names to OPF field names for smartphones.
 # Only fields that have a direct EPREL source are included.
 # Fields like color, camera specs, RAM, dimensions, etc. are NOT available
@@ -98,7 +102,7 @@ def map_product_fields(product, field_map=None):
 
     # Auto-generate the EPREL energy label URL
     if eprel_id is not None:
-        mapped["ec_energy_label:url"] = (
+        mapped[OPF_FIELD_EC_ENERGY_LABEL_URL] = (
             f"https://eprel.ec.europa.eu/screen/product/"
             f"smartphonestablets20231669/{eprel_id}"
             f"?navigatingfrom=qr"
@@ -109,7 +113,7 @@ def map_product_fields(product, field_map=None):
     if ip_rating and ip_rating.startswith("IP"):
         try:
             ip_number = int(ip_rating[2:])
-            mapped["ingress_protection_rating:ip:number"] = ip_number
+            mapped[OPF_FIELD_IP_RATING_NUMBER] = ip_number
         except ValueError:
             pass
 
@@ -128,6 +132,6 @@ def get_opf_csv_headers(field_map=None):
     if field_map is None:
         field_map = SMARTPHONES_FIELD_MAP
     headers = sorted(set(field_map.values()))
-    headers.append("ec_energy_label:url")
-    headers.append("ingress_protection_rating:ip:number")
+    headers.append(OPF_FIELD_EC_ENERGY_LABEL_URL)
+    headers.append(OPF_FIELD_IP_RATING_NUMBER)
     return headers

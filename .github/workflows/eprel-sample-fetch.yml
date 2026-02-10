@@ -35,6 +35,9 @@ on:
           - csv
           - json
 
+permissions:
+  contents: read
+
 jobs:
   fetch-sample:
     runs-on: ubuntu-latest
