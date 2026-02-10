@@ -1,8 +1,9 @@
 # Ignore downloaded and processed data files
-data/raw/*.csv
-data/processed/*.csv
-data/processed/*.json
-data/*.csv
+raw/*.csv
+raw/*.json
+processed/*.csv
+processed/*.json
+*.csv
 
 # Keep directory structure
 !.gitkeep
