@@ -32,43 +32,75 @@ For each product, EPREL provides:
 
 ## Data Schema
 
-### Core Fields (common across product categories)
+### EPREL to Open Products Facts Field Mapping
 
-| Field Name | Description | Type | Example |
-|------------|-------------|------|---------|
-| eprelRegistrationNumber | Unique EPREL product ID | Integer | 2372864 |
-| supplierOrTrademark | Manufacturer/brand name | String | "Samsung" |
-| modelIdentifier | Model number/name | String | "SM-S928B" |
-| deviceType | Product category | String | "SMARTPHONE" |
-| energyClass | EU energy efficiency rating | String | "A" |
-| onMarketStartDate | Market availability date | Date | "2025-01-15" |
+The import script maps EPREL API field names to Open Products Facts (OPF) naming conventions.
+Use `--format csv` to output with OPF field names.
 
-### Smartphones/Tablets Additional Fields
+#### Smartphones/Tablets
 
-| Field Name | Description | Type | Example |
-|------------|-------------|------|---------|
-| repairabilityClass | EU repairability rating | String | "B" |
-| repairabilityIndex | Numeric repairability score | Float | 3.47 |
-| guaranteeDuration | Warranty in months | Integer | 24 |
-| minYearsSoftwareUpdates | Years of software support | Integer | 5 |
-| ratedBatteryCapacity | Battery capacity in mAh | Integer | 5000 |
-| batteryEndurancePerCycle | Battery endurance per cycle | Integer | 3343 |
-| batteryEnduranceInCycles | Rated battery cycles | Integer | 8 |
-| batteryCyclesFromPDF | Battery cycles from datasheet | Integer | 800 |
-| batteryUserReplaceable | User-replaceable battery | Boolean | True |
-| chargerRequiredOutputPower | Charger wattage | Integer | 33 |
-| chargerReceptacleType | Charging port type | String | "USB_C" |
-| operatingSystem | Device OS | String | "ANDROID" |
-| isFoldable | Foldable device flag | Boolean | False |
-| ingressProtectionRating | IP rating | String | "IP68" |
-| screenScratchResistance | Mohs hardness rating | String | "MOHS_7" |
+| EPREL API Field | OPF Field Name | Description | Example |
+|-----------------|---------------|-------------|---------|
+| supplierOrTrademark | brands | Manufacturer/brand | "Samsung" |
+| modelIdentifier | manufacturer:reference_number | Model number | "SM-S928B" |
+| eprelRegistrationNumber | eprel_id | Unique EPREL ID | 2372864 |
+| energyClass | energy_efficiency_class:eu | EU energy rating | "A" |
+| repairabilityClass | repairability_class:eu | EU repairability rating | "B" |
+| repairabilityIndex | repairability_index:eu | Repairability score | 3.47 |
+| onMarketStartDate | release_date | Market availability date | "2025-01-15" |
+| guaranteeDuration | guarantee_duration:months | Warranty in months | 24 |
+| minYearsSoftwareUpdates | consumer_electronics:min_years_software_updates | Years of OS updates | 5 |
+| ratedBatteryCapacity | consumer_electronics:battery_capacity:mah | Battery capacity | 5000 |
+| batteryEndurancePerCycle | battery_autonomy_per_cycle:eu:hours_min | Battery endurance/cycle | 3343 |
+| batteryEnduranceInCycles | battery_endurance_in_cycles:eu | Endurance cycles | 8 |
+| batteryCyclesFromPDF | battery_lifespan_in_cycles:eu:higher_or_equal_to | Rated battery cycles | 800 |
+| batteryUserReplaceable | consumer_electronics:battery_user_replaceable | User-replaceable battery | True |
+| chargerRequiredOutputPower | consumer_electronics:charger_output_power:w | Charger wattage | 33 |
+| chargerReceptacleType | consumer_electronics:charger_receptacle_type | Charging port type | "USB_C" |
+| operatingSystem | consumer_electronics:initial_operating_system | Device OS | "ANDROID" |
+| isFoldable | consumer_electronics:is_foldable | Foldable device flag | False |
+| ingressProtectionRating | ingress_protection_rating:ip | IP rating string | "IP68" |
+| *(auto-generated)* | ingress_protection_rating:ip:number | IP rating number | 68 |
+| ingressProtectionRatingSolid | ingress_protection_rating:ip:solid | Solid particle protection | "DUST_TIGHT" |
+| ingressProtectionRatingWater | ingress_protection_rating:ip:water | Water protection | "CONT_IMMERSION" |
+| immersionDepthWater | ingress_protection_rating:ip:immersion_depth:m | Immersion depth (m) | 1.5 |
+| screenScratchResistance | consumer_electronics:screen_scratch_resistance:mohs | Screen Mohs hardness | "MOHS_7" |
+| repeatedFreeFallReliabilityClass | repeated_free_fall_reliability_class:eu | EU drop test class | "A" |
+| fallsWithoutDefect | consumer_electronics:falls_without_defect | Falls survived | 270 |
+| disassemblyDepthScore | repairability_score:eu:disassembly_depth | Disassembly depth score | 4.05 |
+| fastenersScore | repairability_score:eu:fasteners | Fasteners score | 5.0 |
+| toolsScore | repairability_score:eu:tools | Tools required score | 4.0 |
+| sparePartScore | repairability_score:eu:spare_parts | Spare parts score | "PRIORITY" |
+| repairInfoScore | repairability_score:eu:repair_info | Repair info score | "NO_COST" |
+| webLinkRepairInstructions | consumer_electronics:repair_instructions:url | Repair instructions URL | "https://..." |
+| webLinkInfoSparePartsAvailability | consumer_electronics:spare_parts_info:url | Spare parts info URL | "https://..." |
+| *(auto-generated)* | ec_energy_label:url | EPREL energy label page | "https://eprel.ec.europa.eu/..." |
+
+#### OPF Fields NOT Available from EPREL
+
+The following OPF fields must come from other data sources:
+
+`color`, `consumer_electronics:front_camera_resolution:mpx`, `consumer_electronics:initial_operating_system:version`,
+`consumer_electronics:most_recent_network_generation`, `consumer_electronics:number_of_sim_slots:esim`,
+`consumer_electronics:number_of_sim_slots:physical`, `consumer_electronics:ram_memory:capacity:gb`,
+`consumer_electronics:rear_camera_resolution:mpx`, `consumer_electronics:rom_memory:capacity:gb`,
+`consumer_electronics:screen_size:diagonal:inch`, `consumer_electronics:sd_card_max_capacity:gb`,
+`consumer_electronics:sim_card_slot_type`, `consumer_electronics:nb_of_rear_cameras`,
+`depth:mm`, `height:mm`, `weight:g`, `width:mm`,
+`manufacturer:serie_reference`, `manufacturer:suggested_retail_price:eu:eur`
+
+> **Note on barcodes/GTINs:** The EPREL API does not provide product barcodes (GTINs).
+> Products are identified only by their EPREL registration number. Barcode association
+> requires the future Phase 2 endpoint (see Integration Plan below).
 
 ## Files
 
-- `scripts/eprel_client.py` - Python client for fetching data from the EPREL API
-- `scripts/import_eprel.py` - Main ingestion script for downloading and storing EPREL data
+- `scripts/eprel_client.py` - Python client for fetching data from the EPREL API (with rate limiting: 5 req/s)
+- `scripts/field_mapping.py` - Field mapping from EPREL API names to OPF naming conventions
+- `scripts/import_eprel.py` - Main ingestion script for downloading and storing EPREL data (JSON or CSV)
 - `scripts/requirements.txt` - Python dependencies
-- `scripts/tests/test_eprel_client.py` - Unit tests
+- `scripts/tests/test_eprel_client.py` - Unit tests for API client
+- `scripts/tests/test_field_mapping.py` - Unit tests for field mapping
 - `data/` - Directory for downloaded EPREL data files (JSON/CSV)
 
 ## Usage
@@ -83,8 +115,11 @@ pip install -r requirements.txt
 ### Fetching Product Data
 
 ```bash
-# Fetch smartphones data (default category)
+# Fetch smartphones data as JSON (raw EPREL fields)
 python import_eprel.py --category smartphones --output ../data/
+
+# Fetch as CSV with OPF field names (ready for Open Products Facts import)
+python import_eprel.py --category smartphones --format csv --fetch-details --output ../data/
 
 # Fetch with a specific API key
 python import_eprel.py --category smartphones --api-key YOUR_API_KEY --output ../data/
@@ -95,6 +130,15 @@ python import_eprel.py --category smartphones --category televisions --output ..
 # Fetch with pagination limits
 python import_eprel.py --category smartphones --max-pages 5 --output ../data/
 ```
+
+### GitHub Action (Sample Fetch)
+
+A GitHub Action workflow is available to fetch sample data using the repository's EPREL API key:
+
+1. Go to **Actions** → **EPREL Sample Fetch**
+2. Click **Run workflow**
+3. Select category, number of products, and output format
+4. Download the generated sample from the workflow artifacts
 
 ### Running Tests
 
@@ -122,10 +166,12 @@ python -m pytest tests/ -v
 
 ## Notes
 
-- The EPREL API may require an API key for access. Contact the EPREL team or check the API documentation.
+- The EPREL API requires an API key (stored as `EPREL_KEY` repository secret). Set via `--api-key` flag or `EPREL_API_KEY` env var.
+- **Rate limit**: 5 requests per second (enforced automatically by the client).
+- **Barcodes/GTINs**: The EPREL API does **not** provide product barcodes. Products are identified only by EPREL registration number. Barcode association requires the future Phase 2 endpoint.
 - Data is licensed under CC BY 4.0, which is compatible with Open Food Facts (ODbL).
 - The EPREL database is continuously updated as new products are registered.
-- Rate limiting should be respected when fetching data from the API.
+- The API key must not be disclosed to third parties or used in frontend/client-side code (CORS restrictions apply).
 
 ## References
 

@@ -2,16 +2,18 @@
 """EPREL data ingestion script.
 
 Fetches product data from the EU EPREL (European Product Registry for Energy
-Labelling) API and stores it as JSON files for later import into
+Labelling) API and stores it as JSON or CSV files for later import into
 Open Products Facts.
 
 Usage:
     python import_eprel.py --category smartphones --output ../data/
     python import_eprel.py --category smartphones --api-key KEY --output ../data/
     python import_eprel.py --category smartphones --max-pages 5 --output ../data/
+    python import_eprel.py --category smartphones --format csv --output ../data/
 """
 
 import argparse
+import csv
 import json
 import logging
 import os
@@ -19,6 +21,7 @@ import sys
 from datetime import datetime, timezone
 
 from eprel_client import EPRELClient, PRODUCT_CATEGORIES
+from field_mapping import map_product_fields, get_opf_csv_headers
 
 logger = logging.getLogger(__name__)
 
@@ -34,16 +37,17 @@ def setup_logging(verbose=False):
 
 
 def fetch_and_save(client, category, output_dir, max_pages=None,
-                   page_size=50, fetch_details=False):
-    """Fetch products from a category and save to a JSON file.
+                   page_size=50, fetch_details=False, output_format="json"):
+    """Fetch products from a category and save to a JSON or CSV file.
 
     Args:
         client: An EPRELClient instance.
         category: Product category key.
-        output_dir: Directory to write output JSON files.
+        output_dir: Directory to write output files.
         max_pages: Maximum number of listing pages to fetch.
         page_size: Number of results per listing page.
         fetch_details: If True, fetch full details for each product.
+        output_format: "json" or "csv". CSV uses OPF field names.
 
     Returns:
         Path to the written output file.
@@ -81,6 +85,15 @@ def fetch_and_save(client, category, output_dir, max_pages=None,
                     for pid in all_product_ids]
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+    if output_format == "csv":
+        return _save_csv(products, category, timestamp, output_dir)
+    return _save_json(products, category, timestamp, output_dir,
+                      fetch_details)
+
+
+def _save_json(products, category, timestamp, output_dir, fetch_details):
+    """Save products as a JSON file with metadata."""
     filename = f"eprel_{category}_{timestamp}.json"
     output_path = os.path.join(output_dir, filename)
 
@@ -97,6 +110,31 @@ def fetch_and_save(client, category, output_dir, max_pages=None,
         json.dump(output_data, f, indent=2, ensure_ascii=False)
 
     logger.info("Saved %d products to %s", len(products), output_path)
+    return output_path
+
+
+def _save_csv(products, category, timestamp, output_dir):
+    """Save products as a CSV file with OPF field names."""
+    filename = f"eprel_{category}_{timestamp}.csv"
+    output_path = os.path.join(output_dir, filename)
+
+    mapped_products = [map_product_fields(p) for p in products]
+
+    # Collect all field names across all products
+    all_fields = set()
+    for p in mapped_products:
+        all_fields.update(p.keys())
+    headers = sorted(all_fields)
+
+    with open(output_path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=headers, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(mapped_products)
+
+    logger.info(
+        "Saved %d products (CSV, OPF field names) to %s",
+        len(mapped_products), output_path,
+    )
     return output_path
 
 
@@ -139,7 +177,20 @@ def parse_args(argv=None):
         "--fetch-details",
         action="store_true",
         default=False,
-        help="Fetch full product details (slower, makes one request per product).",
+        help=(
+            "Fetch full product details "
+            "(slower, makes one request per product)."
+        ),
+    )
+    parser.add_argument(
+        "--format",
+        choices=["json", "csv"],
+        default="json",
+        dest="output_format",
+        help=(
+            "Output format: json (raw EPREL fields) or csv "
+            "(OPF field names). Default: json."
+        ),
     )
     parser.add_argument(
         "--verbose", "-v",
@@ -166,6 +217,7 @@ def main(argv=None):
                     max_pages=args.max_pages,
                     page_size=args.page_size,
                     fetch_details=args.fetch_details,
+                    output_format=args.output_format,
                 )
             except Exception:
                 logger.exception(

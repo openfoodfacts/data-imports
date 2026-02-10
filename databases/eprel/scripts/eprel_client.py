@@ -48,6 +48,9 @@ PRODUCT_CATEGORIES = {
 DEFAULT_PAGE_SIZE = 50
 MAX_RETRIES = 3
 RETRY_DELAY_SECONDS = 2
+# EPREL API limit: 5 requests per second
+MAX_REQUESTS_PER_SECOND = 5
+MIN_REQUEST_INTERVAL = 1.0 / MAX_REQUESTS_PER_SECOND
 
 
 def extract_eprel_id(qr_url):
@@ -78,6 +81,7 @@ class EPRELClient:
         self.api_key = api_key
         self.base_url = base_url
         self.timeout = timeout
+        self._last_request_time = 0.0
         self.session = requests.Session()
         if api_key:
             self.session.headers["x-api-key"] = api_key
@@ -101,7 +105,13 @@ class EPRELClient:
         last_exception = None
 
         for attempt in range(MAX_RETRIES):
+            # Enforce rate limit: wait if needed
+            elapsed = time.monotonic() - self._last_request_time
+            if elapsed < MIN_REQUEST_INTERVAL:
+                time.sleep(MIN_REQUEST_INTERVAL - elapsed)
+
             try:
+                self._last_request_time = time.monotonic()
                 response = self.session.request(
                     method, url, params=params, timeout=self.timeout
                 )
