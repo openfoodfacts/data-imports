@@ -68,6 +68,16 @@ jobs:
             --output ../data/ \
             --verbose
 
+      - name: Generate OFF core import CSV
+        if: inputs.output_format == 'csv'
+        working-directory: databases/eprel/scripts
+        run: |
+          INPUT_CSV=$(ls -t ../data/eprel_${{ inputs.category }}_*.csv | head -1)
+          python generate_off_csv.py \
+            --input "$INPUT_CSV" \
+            --output ../data/eprel_${{ inputs.category }}_off_import.csv \
+            --verbose
+
       - name: Display fetched data
         run: |
           echo "=== Files generated ==="

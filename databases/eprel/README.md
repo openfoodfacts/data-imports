@@ -98,10 +98,13 @@ The following OPF fields must come from other data sources:
 - `scripts/eprel_client.py` - Python client for fetching data from the EPREL API (with rate limiting: 5 req/s)
 - `scripts/field_mapping.py` - Field mapping from EPREL API names to OPF naming conventions
 - `scripts/import_eprel.py` - Main ingestion script for downloading and storing EPREL data (JSON or CSV)
+- `scripts/generate_off_csv.py` - Converts OPF-mapped EPREL CSV to OFF core import format (code, product_name, brands, categories, labels)
 - `scripts/requirements.txt` - Python dependencies
 - `scripts/tests/test_eprel_client.py` - Unit tests for API client
 - `scripts/tests/test_field_mapping.py` - Unit tests for field mapping
-- `data/` - Directory for downloaded EPREL data files (JSON/CSV)
+- `scripts/tests/test_generate_off_csv.py` - Unit tests for OFF CSV generation
+- `data/eprel_smartphones_sample.csv` - Sample EPREL data (10 smartphones) with OPF field names
+- `data/eprel_smartphones_off_import.csv` - Same data converted to OFF core import format
 
 ## Usage
 
@@ -129,6 +132,20 @@ python import_eprel.py --category smartphones --category televisions --output ..
 
 # Fetch with pagination limits
 python import_eprel.py --category smartphones --max-pages 5 --output ../data/
+```
+
+### Generating OFF Core Import CSV
+
+After fetching EPREL data as CSV, generate a second CSV suitable for Open Food Facts core import:
+
+```bash
+# Convert OPF-mapped CSV to OFF core format
+python generate_off_csv.py --input ../data/eprel_smartphones_sample.csv \
+    --output ../data/eprel_smartphones_off_import.csv
+
+# The OFF core CSV includes: code, product_name, brands, categories, labels,
+# plus key technical fields (energy class, repairability, battery, etc.)
+# Barcodes use format "eprel_<id>" since EPREL has no GTINs.
 ```
 
 ### GitHub Action (Sample Fetch)
