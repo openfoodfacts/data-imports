@@ -12,6 +12,7 @@ Produces a CSV with fields suitable for direct import into Open Products Facts:
 
 import argparse
 import csv
+import hashlib
 import os
 import sys
 import urllib.request
@@ -88,7 +89,15 @@ def generate_off_csv(input_path, output_path):
             count = 0
             for row in reader:
                 gtin = row.get("GTIN", "").strip()
-                code = gtin if gtin else f"textile_{count}"
+                if not gtin:
+                    # Generate a deterministic identifier from product attributes
+                    brand = row.get("Marque", "").strip()
+                    ref = row.get("Référence interne", "").strip()
+                    cat = row.get("Catégorie", "").strip()
+                    key = f"{brand}|{ref}|{cat}"
+                    short_hash = hashlib.sha256(key.encode()).hexdigest()[:12]
+                    gtin = f"textile_{short_hash}"
+                code = gtin
 
                 off_row = {
                     "code": code,
