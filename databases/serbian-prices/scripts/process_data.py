@@ -139,7 +139,7 @@ def clean_price(price):
     try:
         price_float = float(price_str)
         return price_float if price_float > 0 else None
-    except:
+    except (ValueError, TypeError):
         return None
 
 
