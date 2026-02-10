@@ -55,5 +55,8 @@ yarn.lock
 *.7z
 *.rar
 
+# Downloaded source data (too large to commit)
+databases/french_textile/data/source.csv
+
 # Keep directory structure
 !.gitkeep
