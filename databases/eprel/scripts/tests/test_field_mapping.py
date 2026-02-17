@@ -103,6 +103,14 @@ class TestMapProductFields:
         assert "2238053" in result["ec_energy_label:url"]
         assert "smartphonestablets20231669" in result["ec_energy_label:url"]
 
+    def test_ec_energy_label_svg_url_generated(self):
+        result = map_product_fields(SAMPLE_EPREL_PRODUCT)
+        assert "ec_energy_label:svg_url" in result
+        assert result["ec_energy_label:svg_url"] == (
+            "https://eprel.ec.europa.eu/labels/smartphonestablets20231669/"
+            "Label_2238053.svg"
+        )
+
     def test_fall_reliability(self):
         result = map_product_fields(SAMPLE_EPREL_PRODUCT)
         assert result["repeated_free_fall_reliability_class:eu"] == "A"
@@ -125,6 +133,40 @@ class TestMapProductFields:
         result = map_product_fields(SAMPLE_EPREL_PRODUCT)
         assert result["consumer_electronics:is_foldable"] is False
 
+    def test_barcode_gtin_mapped_to_code(self):
+        product = {"eprelRegistrationNumber": 1, "gtin": "5449000000996"}
+        result = map_product_fields(product)
+        assert result["code"] == "5449000000996"
+
+    def test_barcode_ean_mapped_to_code(self):
+        product = {"eprelRegistrationNumber": 1, "ean": "4006381333931"}
+        result = map_product_fields(product)
+        assert result["code"] == "4006381333931"
+
+    def test_empty_barcode_not_set(self):
+        product = {"eprelRegistrationNumber": 1, "gtin": ""}
+        result = map_product_fields(product)
+        assert "code" not in result
+
+    def test_null_barcode_not_set(self):
+        product = {"eprelRegistrationNumber": 1, "gtin": None}
+        result = map_product_fields(product)
+        assert "code" not in result
+
+    def test_supplier_contact_fields(self):
+        product = {
+            "eprelRegistrationNumber": 1,
+            "supplierName": "Acme Corp",
+            "supplierAddress": "123 Street, Brussels",
+            "supplierEmail": "info@acme.example",
+            "supplierWebsite": "https://acme.example",
+        }
+        result = map_product_fields(product)
+        assert result["supplier:name"] == "Acme Corp"
+        assert result["supplier:address"] == "123 Street, Brussels"
+        assert result["supplier:email"] == "info@acme.example"
+        assert result["supplier:website"] == "https://acme.example"
+
 
 class TestFieldMapCompleteness:
     def test_all_sample_fields_are_mapped(self):
@@ -135,9 +177,12 @@ class TestFieldMapCompleteness:
             )
 
     def test_no_duplicate_opf_names(self):
-        """Each OPF field name should be unique."""
+        """Each OPF field name should be unique (except 'code' which maps
+        multiple barcode field variants)."""
         values = list(SMARTPHONES_FIELD_MAP.values())
-        assert len(values) == len(set(values))
+        # "code" can appear multiple times (gtin, ean, barcode all -> code)
+        non_code = [v for v in values if v != "code"]
+        assert len(non_code) == len(set(non_code))
 
 
 class TestGetOpfCsvHeaders:
@@ -149,6 +194,7 @@ class TestGetOpfCsvHeaders:
     def test_includes_generated_fields(self):
         headers = get_opf_csv_headers()
         assert "ec_energy_label:url" in headers
+        assert "ec_energy_label:svg_url" in headers
         assert "ingress_protection_rating:ip:number" in headers
 
     def test_includes_mapped_fields(self):

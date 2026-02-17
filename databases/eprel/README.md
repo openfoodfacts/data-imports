@@ -44,6 +44,17 @@ Use `--format csv` to output with OPF field names.
 | supplierOrTrademark | brands | Manufacturer/brand | "Samsung" |
 | modelIdentifier | manufacturer:reference_number | Model number | "SM-S928B" |
 | eprelRegistrationNumber | eprel_id | Unique EPREL ID | 2372864 |
+| gtin / ean / barcode | code | Product barcode (when available) | "5449000000996" |
+| supplierName | supplier:name | Supplier legal name | "Samsung Electronics" |
+| supplierAddress | supplier:address | Supplier postal address | "..." |
+| supplierContact | supplier:contact | Supplier contact info | "..." |
+| supplierEmail | supplier:email | Supplier email | "info@example.com" |
+| supplierPhone | supplier:phone | Supplier phone | "+32..." |
+| supplierWebsite | supplier:website | Supplier website | "https://..." |
+| contactAddress | supplier:contact_address | Contact address | "..." |
+| tradeMark | supplier:trademark | Registered trademark | "Galaxy" |
+| dealerName | dealer:name | Dealer name | "..." |
+| dealerAddress | dealer:address | Dealer address | "..." |
 | energyClass | energy_efficiency_class:eu | EU energy rating | "A" |
 | repairabilityClass | repairability_class:eu | EU repairability rating | "B" |
 | repairabilityIndex | repairability_index:eu | Repairability score | 3.47 |
@@ -75,6 +86,7 @@ Use `--format csv` to output with OPF field names.
 | webLinkRepairInstructions | consumer_electronics:repair_instructions:url | Repair instructions URL | "https://..." |
 | webLinkInfoSparePartsAvailability | consumer_electronics:spare_parts_info:url | Spare parts info URL | "https://..." |
 | *(auto-generated)* | ec_energy_label:url | EPREL energy label page | "https://eprel.ec.europa.eu/..." |
+| *(auto-generated)* | ec_energy_label:svg_url | Energy label SVG image | "https://eprel.ec.europa.eu/labels/.../Label_12345.svg" |
 
 #### OPF Fields NOT Available from EPREL
 
@@ -89,9 +101,16 @@ The following OPF fields must come from other data sources:
 `depth:mm`, `height:mm`, `weight:g`, `width:mm`,
 `manufacturer:serie_reference`, `manufacturer:suggested_retail_price:eu:eur`
 
-> **Note on barcodes/GTINs:** The EPREL API does not provide product barcodes (GTINs).
-> Products are identified only by their EPREL registration number. Barcode association
-> requires the future Phase 2 endpoint (see Integration Plan below).
+> **Note on barcodes/GTINs:** The EPREL API may occasionally include barcode/GTIN fields
+> for some products. When present, these are mapped to the `code` field and used as the
+> real barcode in the OFF import CSV. When no barcode is available (the common case),
+> a placeholder `eprel_<id>` is used. Full barcode association requires the future
+> Phase 2 endpoint (see Integration Plan below).
+
+> **Note on supplier contacts:** Supplier/producer contact information (name, address,
+> email, phone, website) is captured when returned by the EPREL API and mapped to
+> `supplier:*` fields. Any EPREL fields not explicitly mapped are preserved with
+> an `eprel:` prefix to avoid data loss.
 
 ## Files
 
@@ -132,6 +151,9 @@ python import_eprel.py --category smartphones --category televisions --output ..
 
 # Fetch with pagination limits
 python import_eprel.py --category smartphones --max-pages 5 --output ../data/
+
+# Fetch and also download energy label SVGs
+python import_eprel.py --category smartphones --format csv --fetch-details --download-labels --output ../data/
 ```
 
 ### Generating OFF Core Import CSV

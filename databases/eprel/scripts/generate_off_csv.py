@@ -125,6 +125,7 @@ def convert_to_off_row(row):
             "repeated_free_fall_reliability_class:eu", ""
         ),
         "ec_energy_label:url": row.get("ec_energy_label:url", ""),
+        "ec_energy_label:svg_url": row.get("ec_energy_label:svg_url", ""),
         "release_date": row.get("release_date", ""),
     }
 
@@ -143,6 +144,7 @@ OFF_CORE_HEADERS = [
     "ingress_protection_rating:ip:number",
     "repeated_free_fall_reliability_class:eu",
     "ec_energy_label:url",
+    "ec_energy_label:svg_url",
     "release_date",
 ]
 

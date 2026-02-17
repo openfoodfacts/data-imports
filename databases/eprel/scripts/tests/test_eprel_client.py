@@ -8,6 +8,7 @@ import requests
 
 from eprel_client import (
     EPREL_API_BASE_URL,
+    EPREL_LABELS_BASE_URL,
     EPRELClient,
     PRODUCT_CATEGORIES,
     extract_eprel_id,
@@ -220,3 +221,47 @@ class TestProductCategories:
         for key, value in PRODUCT_CATEGORIES.items():
             assert isinstance(key, str)
             assert isinstance(value, str)
+
+
+class TestLabelDownload:
+    def test_get_label_url(self):
+        url = EPRELClient.get_label_url("smartphones", "2418699")
+        assert url == (
+            f"{EPREL_LABELS_BASE_URL}/smartphonestablets20231669/"
+            "Label_2418699.svg"
+        )
+
+    def test_get_label_url_invalid_category(self):
+        with pytest.raises(ValueError, match="Unknown category"):
+            EPRELClient.get_label_url("nonexistent", "12345")
+
+    @patch("eprel_client.requests.Session")
+    def test_download_label_success(self, mock_session_cls, tmp_path):
+        mock_session = MagicMock()
+        mock_session_cls.return_value = mock_session
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = b"<svg>mock label</svg>"
+        mock_response.raise_for_status.return_value = None
+        mock_session.get.return_value = mock_response
+
+        with EPRELClient() as client:
+            result = client.download_label(
+                "smartphones", "2418699", str(tmp_path)
+            )
+
+        assert result is not None
+        assert result.endswith("Label_2418699.svg")
+
+    @patch("eprel_client.requests.Session")
+    def test_download_label_failure(self, mock_session_cls, tmp_path):
+        mock_session = MagicMock()
+        mock_session_cls.return_value = mock_session
+        mock_session.get.side_effect = requests.exceptions.ConnectionError()
+
+        with EPRELClient() as client:
+            result = client.download_label(
+                "smartphones", "99999", str(tmp_path)
+            )
+
+        assert result is None

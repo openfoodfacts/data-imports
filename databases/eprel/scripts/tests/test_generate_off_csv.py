@@ -26,6 +26,10 @@ SAMPLE_OPF_ROW = {
         "https://eprel.ec.europa.eu/screen/product/"
         "smartphonestablets20231669/2238053?navigatingfrom=qr"
     ),
+    "ec_energy_label:svg_url": (
+        "https://eprel.ec.europa.eu/labels/smartphonestablets20231669/"
+        "Label_2238053.svg"
+    ),
     "release_date": "2025-06-20",
 }
 
@@ -132,3 +136,7 @@ class TestConvertToOffRow:
     def test_release_date_preserved(self):
         result = convert_to_off_row(SAMPLE_OPF_ROW)
         assert result["release_date"] == "2025-06-20"
+
+    def test_svg_url_preserved(self):
+        result = convert_to_off_row(SAMPLE_OPF_ROW)
+        assert "Label_2238053.svg" in result["ec_energy_label:svg_url"]

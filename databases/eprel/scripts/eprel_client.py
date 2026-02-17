@@ -4,9 +4,11 @@ The European Product Registry for Energy Labelling (EPREL) provides an API
 to access energy labelling and technical data for products sold in the EU.
 
 API base URL: https://eprel.ec.europa.eu/api/v1
+Labels URL pattern: https://eprel.ec.europa.eu/labels/{category}/Label_{id}.svg
 """
 
 import logging
+import os
 import re
 import time
 from urllib.parse import urljoin
@@ -16,6 +18,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 EPREL_API_BASE_URL = "https://eprel.ec.europa.eu/api/v1"
+EPREL_LABELS_BASE_URL = "https://eprel.ec.europa.eu/labels"
 EPREL_QR_URL_PATTERN = re.compile(
     r"^https?://eprel\.ec\.europa\.eu/qr/(\d+)$"
 )
@@ -246,6 +249,67 @@ class EPRELClient:
     def close(self):
         """Close the underlying HTTP session."""
         self.session.close()
+
+    @staticmethod
+    def get_label_url(category, eprel_id):
+        """Build the URL for a product's energy label SVG.
+
+        Args:
+            category: Product category key (e.g., "smartphones").
+            eprel_id: The EPREL registration number.
+
+        Returns:
+            URL string for the label SVG.
+
+        Raises:
+            ValueError: If the category is not recognized.
+        """
+        category_path = PRODUCT_CATEGORIES.get(category)
+        if not category_path:
+            raise ValueError(
+                f"Unknown category '{category}'. "
+                f"Available: {', '.join(sorted(PRODUCT_CATEGORIES.keys()))}"
+            )
+        return (
+            f"{EPREL_LABELS_BASE_URL}/{category_path}/"
+            f"Label_{eprel_id}.svg"
+        )
+
+    def download_label(self, category, eprel_id, output_dir):
+        """Download the energy label SVG for a product.
+
+        Args:
+            category: Product category key (e.g., "smartphones").
+            eprel_id: The EPREL registration number.
+            output_dir: Directory to save the SVG file.
+
+        Returns:
+            Path to the downloaded SVG file, or None if download failed.
+        """
+        url = self.get_label_url(category, eprel_id)
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(
+            output_dir, f"Label_{eprel_id}.svg"
+        )
+
+        # Enforce rate limit
+        elapsed = time.monotonic() - self._last_request_time
+        if elapsed < MIN_REQUEST_INTERVAL:
+            time.sleep(MIN_REQUEST_INTERVAL - elapsed)
+
+        try:
+            self._last_request_time = time.monotonic()
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            with open(output_path, "wb") as f:
+                f.write(response.content)
+            logger.info("Downloaded label to %s", output_path)
+            return output_path
+        except requests.exceptions.RequestException:
+            logger.warning(
+                "Failed to download label for %s/%s", category, eprel_id
+            )
+            return None
 
     def __enter__(self):
         return self

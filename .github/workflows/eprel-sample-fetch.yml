@@ -26,6 +26,11 @@ on:
         required: true
         default: '10'
         type: string
+      download_labels:
+        description: 'Download energy label SVGs'
+        required: false
+        default: false
+        type: boolean
       output_format:
         description: 'Output format'
         required: true
@@ -58,6 +63,10 @@ jobs:
         env:
           EPREL_API_KEY: ${{ secrets.EPREL_KEY }}
         run: |
+          EXTRA_ARGS=""
+          if [ "${{ inputs.download_labels }}" = "true" ]; then
+            EXTRA_ARGS="--download-labels"
+          fi
           python import_eprel.py \
             --category ${{ inputs.category }} \
             --api-key "$EPREL_API_KEY" \
@@ -66,7 +75,8 @@ jobs:
             --fetch-details \
             --format ${{ inputs.output_format }} \
             --output ../data/ \
-            --verbose
+            --verbose \
+            $EXTRA_ARGS
 
       - name: Generate OFF core import CSV
         if: inputs.output_format == 'csv'
@@ -93,5 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: eprel-sample-${{ inputs.category }}
-          path: databases/eprel/data/eprel_*
+          path: |
+            databases/eprel/data/eprel_*
+            databases/eprel/data/labels/
           retention-days: 30

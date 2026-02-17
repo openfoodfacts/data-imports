@@ -37,7 +37,8 @@ def setup_logging(verbose=False):
 
 
 def fetch_and_save(client, category, output_dir, max_pages=None,
-                   page_size=50, fetch_details=False, output_format="json"):
+                   page_size=50, fetch_details=False, output_format="json",
+                   download_labels=False):
     """Fetch products from a category and save to a JSON or CSV file.
 
     Args:
@@ -48,6 +49,7 @@ def fetch_and_save(client, category, output_dir, max_pages=None,
         page_size: Number of results per listing page.
         fetch_details: If True, fetch full details for each product.
         output_format: "json" or "csv". CSV uses OPF field names.
+        download_labels: If True, download energy label SVGs.
 
     Returns:
         Path to the written output file.
@@ -83,6 +85,20 @@ def fetch_and_save(client, category, output_dir, max_pages=None,
     else:
         products = [{"eprelRegistrationNumber": pid}
                     for pid in all_product_ids]
+
+    # Download energy label SVGs if requested
+    if download_labels and products:
+        labels_dir = os.path.join(output_dir, "labels")
+        logger.info("Downloading energy label SVGs to %s", labels_dir)
+        for i, product in enumerate(products):
+            pid = product.get("eprelRegistrationNumber", "")
+            if pid:
+                client.download_label(category, pid, labels_dir)
+                if (i + 1) % 100 == 0:
+                    logger.info(
+                        "Downloaded labels for %d/%d products",
+                        i + 1, len(products),
+                    )
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
@@ -183,6 +199,15 @@ def parse_args(argv=None):
         ),
     )
     parser.add_argument(
+        "--download-labels",
+        action="store_true",
+        default=False,
+        help=(
+            "Download energy label SVGs for each product "
+            "into a labels/ subdirectory."
+        ),
+    )
+    parser.add_argument(
         "--format",
         choices=["json", "csv"],
         default="json",
@@ -218,6 +243,7 @@ def main(argv=None):
                     page_size=args.page_size,
                     fetch_details=args.fetch_details,
                     output_format=args.output_format,
+                    download_labels=args.download_labels,
                 )
             except Exception:
                 logger.exception(
