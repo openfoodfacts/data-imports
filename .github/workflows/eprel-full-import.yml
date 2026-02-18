@@ -1,0 +1,107 @@
+name: EPREL Full Import
+
+on:
+  workflow_dispatch:
+    inputs:
+      category:
+        description: 'Product category to import'
+        required: true
+        default: 'smartphones'
+        type: choice
+        options:
+          - smartphones
+          - televisions
+          - washingmachines
+          - dishwashers
+          - refrigeratingappliances
+          - airconditioners
+          - displays
+          - driers
+          - lamps
+          - lightsources
+          - ovens
+          - tyres
+      page_size:
+        description: 'Products per API page (max 50)'
+        required: true
+        default: '50'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  full-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r databases/eprel/scripts/requirements.txt
+
+      - name: Fetch all products from EPREL API
+        working-directory: databases/eprel/scripts
+        env:
+          EPREL_API_KEY: ${{ secrets.EPREL_KEY }}
+        run: |
+          python import_eprel.py \
+            --category ${{ inputs.category }} \
+            --api-key "$EPREL_API_KEY" \
+            --page-size ${{ inputs.page_size }} \
+            --fetch-details \
+            --format csv \
+            --output ../data/ \
+            --verbose
+
+      - name: Generate OFF core import CSV
+        working-directory: databases/eprel/scripts
+        run: |
+          INPUT_CSV=$(ls -t ../data/eprel_${{ inputs.category }}_*.csv | head -1)
+          python generate_off_csv.py \
+            --input "$INPUT_CSV" \
+            --output ../data/eprel_${{ inputs.category }}_off_import.csv \
+            --verbose
+
+      - name: Display summary
+        run: |
+          echo "=== Files generated ==="
+          ls -la databases/eprel/data/eprel_* || echo "No files found"
+          echo ""
+          echo "=== Row counts ==="
+          shopt -s nullglob
+          for f in databases/eprel/data/eprel_*.csv; do
+            echo "$f: $(wc -l < "$f") lines (including header)"
+          done
+
+      - name: Upload data as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eprel-full-${{ inputs.category }}
+          path: databases/eprel/data/eprel_*
+          retention-days: 90
+
+      - name: Commit imported data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add databases/eprel/data/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            # Find the timestamped OPF CSV (not the _off_import one)
+            OPF_CSV=$(ls -t databases/eprel/data/eprel_${{ inputs.category }}_2*.csv 2>/dev/null | head -1)
+            if [ -n "$OPF_CSV" ]; then
+              LINES=$(wc -l < "$OPF_CSV")
+              git commit -m "data: Import all EPREL ${{ inputs.category }} ($((LINES - 1)) products)"
+            else
+              git commit -m "data: Import all EPREL ${{ inputs.category }}"
+            fi
+            git push
+          fi

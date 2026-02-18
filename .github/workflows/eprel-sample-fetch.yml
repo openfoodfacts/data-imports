@@ -1,0 +1,109 @@
+name: EPREL Sample Fetch
+
+on:
+  workflow_dispatch:
+    inputs:
+      category:
+        description: 'Product category to fetch'
+        required: true
+        default: 'smartphones'
+        type: choice
+        options:
+          - smartphones
+          - televisions
+          - washingmachines
+          - dishwashers
+          - refrigeratingappliances
+          - airconditioners
+          - displays
+          - driers
+          - lamps
+          - lightsources
+          - ovens
+          - tyres
+      max_products:
+        description: 'Max number of product details to fetch (respects 5 req/s limit)'
+        required: true
+        default: '10'
+        type: string
+      download_labels:
+        description: 'Download energy label SVGs'
+        required: false
+        default: false
+        type: boolean
+      output_format:
+        description: 'Output format'
+        required: true
+        default: 'csv'
+        type: choice
+        options:
+          - csv
+          - json
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-sample:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r databases/eprel/scripts/requirements.txt
+
+      - name: Fetch sample data from EPREL API
+        working-directory: databases/eprel/scripts
+        env:
+          EPREL_API_KEY: ${{ secrets.EPREL_KEY }}
+        run: |
+          EXTRA_ARGS=""
+          if [ "${{ inputs.download_labels }}" = "true" ]; then
+            EXTRA_ARGS="--download-labels"
+          fi
+          python import_eprel.py \
+            --category ${{ inputs.category }} \
+            --api-key "$EPREL_API_KEY" \
+            --max-pages 1 \
+            --page-size ${{ inputs.max_products }} \
+            --fetch-details \
+            --format ${{ inputs.output_format }} \
+            --output ../data/ \
+            --verbose \
+            $EXTRA_ARGS
+
+      - name: Generate OFF core import CSV
+        if: inputs.output_format == 'csv'
+        working-directory: databases/eprel/scripts
+        run: |
+          INPUT_CSV=$(ls -t ../data/eprel_${{ inputs.category }}_*.csv | head -1)
+          python generate_off_csv.py \
+            --input "$INPUT_CSV" \
+            --output ../data/eprel_${{ inputs.category }}_off_import.csv \
+            --verbose
+
+      - name: Display fetched data
+        run: |
+          echo "=== Files generated ==="
+          ls -la databases/eprel/data/
+          echo ""
+          for f in databases/eprel/data/eprel_*; do
+            echo "=== $f ==="
+            head -50 "$f"
+            echo ""
+          done
+
+      - name: Upload sample data as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eprel-sample-${{ inputs.category }}
+          path: |
+            databases/eprel/data/eprel_*
+            databases/eprel/data/labels/
+          retention-days: 30
