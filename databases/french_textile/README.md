@@ -67,6 +67,34 @@ python3 generate_off_csv.py
 python3 generate_off_csv.py --input path/to/source.csv --output path/to/output.csv
 ```
 
+### upload_to_opf.py
+
+Uploads products directly to **Open Products Facts** (via the Python SDK) and
+their environmental properties to the **Folksonomy Engine** (via REST API).
+
+Requires:
+- `pip install openfoodfacts requests`
+- Environment variable `ECOBALYSE_TEXTILE_IMPORT` set to the account password
+
+```bash
+cd databases/french_textile/scripts
+
+# Test run with 10 products (default)
+python3 upload_to_opf.py
+
+# Dry run — shows what would be uploaded without making changes
+python3 upload_to_opf.py --dry-run
+
+# Upload 100 products
+python3 upload_to_opf.py --limit 100
+
+# Upload all products
+python3 upload_to_opf.py --limit 0
+
+# Use a local source file
+python3 upload_to_opf.py --input path/to/source.csv
+```
+
 ## Data Files
 
 - `data/folksonomy_import_sample.csv` — Sample output (100 rows) of the Folksonomy Engine CSV
