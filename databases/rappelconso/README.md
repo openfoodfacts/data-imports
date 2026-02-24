@@ -13,7 +13,7 @@
 
 [Rappel Conso](https://rappelconso.gouv.fr/) is the official French product recall portal, maintained by government agencies including the DGCCRF (consumer goods and food safety), DGAL (food), DGEC (energy), and DGPR (environmental risks). It publishes recall notices for unsafe or non-compliant products sold in France.
 
-This import focuses on **food products** (`categorie_de_produit = "Alimentation"`) that carry a GTIN (barcode). When a product is recalled but does not yet exist in Open Food Facts, this script creates a minimal product entry with only identification data — **not** the recall reason or risk information.
+This import focuses on **food products** (`categorie_produit = "alimentation"`) that carry a GTIN (barcode). When a product is recalled but does not yet exist in Open Food Facts, this script creates a minimal product entry with only identification data — **not** the recall reason or risk information.
 
 ### Coverage
 
@@ -29,16 +29,26 @@ For each new food product identified, the import captures:
 
 | Source Field | OFF Field | Description |
 |---|---|---|
-| `gtin` | `code` | Product barcode (GTIN) |
-| `noms_des_modeles_ou_references` | `product_name` | Product name/model |
-| `nom_de_la_marque_du_produit` | `brands` | Brand name |
-| `sous_categorie_de_produit` | `categories` | Product subcategory |
+| `identification_produits[0]` | `code` | GTIN barcode (first element of the identification list) |
+| `libelle` | `product_name` | Product title/label |
+| `marque_produit` | `brands` | Brand name |
+| `sous_categorie_produit` | `categories` | Product subcategory |
 | *(constant)* | `countries` | "France" |
 | *(constant)* | `source` | "Rappel Conso" |
-| `id_fiche` | `rappelconso:fiche_id` | Recall notice ID |
-| `lien_vers_la_fiche_rappelconso` | `rappelconso:lien_fiche` | Link to recall notice |
+| `id` | `rappelconso:fiche_id` | Recall notice numeric ID |
+| `lien_vers_la_fiche_rappel` | `rappelconso:lien_fiche` | URL of the recall notice |
 
 Recall-specific data (reason for recall, risk description, etc.) is **intentionally excluded** from the OFF import to keep product entries factual.
+
+### GTIN Extraction
+
+GTINs are embedded in the `identification_produits` field, which is a list with the structure:
+
+```
+[GTIN, lot_number, date_type, date_start, (date_end)]
+```
+
+For recalls covering multiple products, groups are separated by the `|` character (either as a standalone list element, or prepended to the next GTIN as `|GTIN`). The import script correctly extracts GTINs from all groups.
 
 ## Files
 
@@ -130,8 +140,8 @@ The workflow can also be triggered manually from **Actions** → **Rappel Conso 
 
 ## Notes
 
-- The Rappel Conso V2 dataset (`rappelconso-v2-gtin-espaces`) separates multiple GTINs by spaces in the `gtin` field. The import script handles multi-GTIN records correctly.
-- GTINs were added to the dataset in **November 2024**. Records before this date will not have barcodes and are skipped.
+- The Rappel Conso V2 dataset (`rappelconso-v2-gtin-espaces`) embeds GTINs in the `identification_produits` field. Each recall can cover multiple products; the import script extracts all GTINs from all groups in the field.
+- GTINs appear in the `identification_produits` field. Records without GTINs (empty first element) are skipped.
 - The script uses the public OFF API (`https://world.openfoodfacts.org/api/v2/product/{barcode}.json`) to check for product existence. No OFF credentials are required for this check.
 - The import only covers `categorie_de_produit = "Alimentation"` (food products), as Rappel Conso also covers non-food items (toys, electronics, cosmetics, etc.) which are outside the scope of Open Food Facts.
 

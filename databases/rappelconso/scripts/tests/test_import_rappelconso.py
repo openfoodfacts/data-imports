@@ -21,50 +21,82 @@ from import_rappelconso import (
 # ---------- extract_gtins ----------
 
 class TestExtractGtins:
-    def test_single_gtin(self):
-        assert extract_gtins("3760000000001") == ["3760000000001"]
+    def test_single_gtin_in_list(self):
+        # Standard food record: [GTIN, lot, date_type, date_start, date_end]
+        result = extract_gtins(["3760000000001", "lot123", "dlc", "2025-01-01", ""])
+        assert result == ["3760000000001"]
 
-    def test_multiple_gtins_space_separated(self):
-        result = extract_gtins("3760000000001 9876543210987")
-        assert result == ["3760000000001", "9876543210987"]
+    def test_multiple_gtins_pipe_prefixed(self):
+        # Multi-GTIN record: subsequent GTINs are "|GTIN" prefixed
+        result = extract_gtins([
+            "1111111111111", "tous les lots", "non concerné", "",
+            "|2222222222222", "tous les lots", "non concerné", "",
+        ])
+        assert result == ["1111111111111", "2222222222222"]
 
-    def test_empty_string(self):
-        assert extract_gtins("") == []
+    def test_empty_first_gtin_skipped(self):
+        # Record with no GTIN (empty string at index 0)
+        result = extract_gtins(["", "lot123", "dlc", "2025-01-01", ""])
+        assert result == []
+
+    def test_pipe_separator_without_gtin_skipped(self):
+        # Multi-group record where groups have no GTIN: "|" standalone
+        result = extract_gtins([
+            "", "l0237", "date limite de consommation", "2020-11-12",
+            "|", "l0240", "date limite de consommation", "2020-11-15",
+        ])
+        assert result == []
 
     def test_none_input(self):
         assert extract_gtins(None) == []
 
-    def test_non_numeric_filtered_out(self):
-        assert extract_gtins("N/A") == []
+    def test_empty_list(self):
+        assert extract_gtins([]) == []
 
-    def test_mixed_numeric_and_text_filtered(self):
-        result = extract_gtins("3760000000001 N/A")
-        assert result == ["3760000000001"]
+    def test_gtin_too_short_skipped(self):
+        # Less than 8 digits is not a valid GTIN
+        result = extract_gtins(["1234567", "lot", "non concerné", ""])
+        assert result == []
 
-    def test_whitespace_only(self):
-        assert extract_gtins("   ") == []
+    def test_gtin_too_long_skipped(self):
+        # More than 14 digits is not a valid GTIN
+        result = extract_gtins(["123456789012345", "lot", "non concerné", ""])
+        assert result == []
 
-    def test_leading_trailing_whitespace_stripped(self):
-        assert extract_gtins("  3760000000001  ") == ["3760000000001"]
+    def test_alphanumeric_lot_not_extracted(self):
+        # Lot numbers like "cgr42" or "l0237" are not all-digit, so filtered
+        result = extract_gtins(["3440432025078", "cgr42", "dlc", "2026-03-06", ""])
+        assert result == ["3440432025078"]
 
     def test_three_gtins(self):
-        result = extract_gtins("111 222 333")
-        assert result == ["111", "222", "333"]
+        result = extract_gtins([
+            "3564709006031", "v028", "ddm", "2021-04-04", "",
+            "|3250390398028", "v029", "dlc", "2021-04-03", "",
+            "|3440432025078", "v030", "dlc", "2026-03-06", "",
+        ])
+        assert result == ["3564709006031", "3250390398028", "3440432025078"]
+
+    def test_eight_digit_ean8_accepted(self):
+        # EAN-8 barcodes have 8 digits
+        result = extract_gtins(["12345678", "lot", "non concerné", ""])
+        assert result == ["12345678"]
 
 
 # ---------- build_off_row ----------
 
 SAMPLE_RECORD = {
-    "id_fiche": "abc123",
-    "titre_du_rappel": "Rappel produit X",
-    "nom_de_la_marque_du_produit": "TestBrand",
-    "noms_des_modeles_ou_references": "Product X",
-    "identification_des_produits": "Lot ABC",
-    "gtin": "3760000000001",
-    "categorie_de_produit": "Alimentation",
-    "sous_categorie_de_produit": "Biscuits et gateaux",
-    "date_de_publication": "2024-11-29",
-    "lien_vers_la_fiche_rappelconso": "https://rappelconso.fr/abc123",
+    "id": 21381,
+    "numero_fiche": "2026-02-0250",
+    "marque_produit": "TestBrand",
+    "modeles_ou_references": "Product X model",
+    "libelle": "Product X",
+    "identification_produits": [
+        "3760000000001", "lot42", "date limite de consommation", "2025-01-01", ""
+    ],
+    "categorie_produit": "alimentation",
+    "sous_categorie_produit": "Biscuits et gateaux",
+    "date_publication": "2024-11-29",
+    "lien_vers_la_fiche_rappel": "https://rappel.conso.gouv.fr/fiche-rappel/21381/interne",
 }
 
 
@@ -77,42 +109,54 @@ class TestBuildOffRow:
         assert row["categories"] == "Biscuits et gateaux"
         assert row["countries"] == "France"
         assert row["source"] == "Rappel Conso"
-        assert row["rappelconso:fiche_id"] == "abc123"
-        assert row["rappelconso:lien_fiche"] == "https://rappelconso.fr/abc123"
+        assert row["rappelconso:fiche_id"] == "21381"
+        assert row["rappelconso:lien_fiche"] == (
+            "https://rappel.conso.gouv.fr/fiche-rappel/21381/interne"
+        )
 
     def test_recall_data_excluded(self):
         """Recall-specific fields should not appear in the OFF row."""
         row = build_off_row(SAMPLE_RECORD, "3760000000001")
-        assert "titre_du_rappel" not in row
-        assert "date_de_publication" not in row
+        assert "motif_rappel" not in row
+        assert "date_publication" not in row
 
-    def test_fallback_to_identification_when_no_model_name(self):
+    def test_libelle_preferred_over_modeles(self):
+        """libelle is used as product_name before modeles_ou_references."""
         record = {
-            "nom_de_la_marque_du_produit": "Brand",
-            "noms_des_modeles_ou_references": "",
-            "identification_des_produits": "Fallback Name",
+            "marque_produit": "Brand",
+            "libelle": "Clean Title",
+            "modeles_ou_references": "Long technical reference",
         }
         row = build_off_row(record, "123")
-        assert row["product_name"] == "Fallback Name"
+        assert row["product_name"] == "Clean Title"
+
+    def test_fallback_to_modeles_when_no_libelle(self):
+        record = {
+            "marque_produit": "Brand",
+            "libelle": "",
+            "modeles_ou_references": "Reference Name",
+        }
+        row = build_off_row(record, "123")
+        assert row["product_name"] == "Reference Name"
 
     def test_fallback_to_brand_when_no_name_fields(self):
         record = {
-            "nom_de_la_marque_du_produit": "OnlyBrand",
-            "noms_des_modeles_ou_references": "",
-            "identification_des_produits": "",
+            "marque_produit": "OnlyBrand",
+            "libelle": "",
+            "modeles_ou_references": "",
         }
         row = build_off_row(record, "123")
         assert row["product_name"] == "OnlyBrand"
 
     def test_fallback_category_to_parent(self):
         record = {
-            "nom_de_la_marque_du_produit": "Brand",
-            "noms_des_modeles_ou_references": "Prod",
-            "sous_categorie_de_produit": "",
-            "categorie_de_produit": "Alimentation",
+            "marque_produit": "Brand",
+            "libelle": "Prod",
+            "sous_categorie_produit": "",
+            "categorie_produit": "alimentation",
         }
         row = build_off_row(record, "123")
-        assert row["categories"] == "Alimentation"
+        assert row["categories"] == "alimentation"
 
     def test_gtin_used_as_code(self):
         row = build_off_row(SAMPLE_RECORD, "9999999999999")
@@ -120,9 +164,9 @@ class TestBuildOffRow:
 
     def test_whitespace_stripped_from_fields(self):
         record = {
-            "nom_de_la_marque_du_produit": "  Brand  ",
-            "noms_des_modeles_ou_references": "  Product  ",
-            "sous_categorie_de_produit": "  Cat  ",
+            "marque_produit": "  Brand  ",
+            "libelle": "  Product  ",
+            "sous_categorie_produit": "  Cat  ",
         }
         row = build_off_row(record, "123")
         assert row["brands"] == "Brand"
@@ -200,9 +244,9 @@ class TestProcessRecalls:
         mock_client = MagicMock()
         mock_client.fetch_all_recalls.return_value = [
             {
-                "id_fiche": "001",
-                "gtin": "",
-                "nom_de_la_marque_du_produit": "Brand",
+                "id": 1,
+                "identification_produits": ["", "lot123", "non concerné", ""],
+                "marque_produit": "Brand",
             },
         ]
         rows = list(process_recalls(mock_client, check_off=False))
@@ -212,11 +256,13 @@ class TestProcessRecalls:
         mock_client = MagicMock()
         mock_client.fetch_all_recalls.return_value = [
             {
-                "id_fiche": "001",
-                "gtin": "3760000000001",
-                "nom_de_la_marque_du_produit": "Brand",
-                "noms_des_modeles_ou_references": "Product",
-                "sous_categorie_de_produit": "Biscuits",
+                "id": 1,
+                "identification_produits": [
+                    "3760000000001", "lot", "dlc", "2025-01-01", ""
+                ],
+                "marque_produit": "Brand",
+                "libelle": "Product",
+                "sous_categorie_produit": "Biscuits",
             },
         ]
         rows = list(process_recalls(mock_client, check_off=False))
@@ -227,9 +273,12 @@ class TestProcessRecalls:
         mock_client = MagicMock()
         mock_client.fetch_all_recalls.return_value = [
             {
-                "id_fiche": "001",
-                "gtin": "1111111111111 2222222222222",
-                "nom_de_la_marque_du_produit": "Brand",
+                "id": 1,
+                "identification_produits": [
+                    "1111111111111", "lots", "non concerné", "",
+                    "|2222222222222", "lots", "non concerné", "",
+                ],
+                "marque_produit": "Brand",
             },
         ]
         rows = list(process_recalls(mock_client, check_off=False))
@@ -241,14 +290,14 @@ class TestProcessRecalls:
         mock_client = MagicMock()
         mock_client.fetch_all_recalls.return_value = [
             {
-                "id_fiche": "001",
-                "gtin": "3760000000001",
-                "nom_de_la_marque_du_produit": "Brand1",
+                "id": 1,
+                "identification_produits": ["3760000000001", "lot", "dlc", ""],
+                "marque_produit": "Brand1",
             },
             {
-                "id_fiche": "002",
-                "gtin": "3760000000001",
-                "nom_de_la_marque_du_produit": "Brand2",
+                "id": 2,
+                "identification_produits": ["3760000000001", "lot", "dlc", ""],
+                "marque_produit": "Brand2",
             },
         ]
         rows = list(process_recalls(mock_client, check_off=False))
@@ -260,9 +309,9 @@ class TestProcessRecalls:
         mock_client = MagicMock()
         mock_client.fetch_all_recalls.return_value = [
             {
-                "id_fiche": "001",
-                "gtin": "3760000000001",
-                "nom_de_la_marque_du_produit": "Brand",
+                "id": 1,
+                "identification_produits": ["3760000000001", "lot", "dlc", ""],
+                "marque_produit": "Brand",
             },
         ]
         rows = list(process_recalls(mock_client, check_off=True))
@@ -275,9 +324,9 @@ class TestProcessRecalls:
         mock_client = MagicMock()
         mock_client.fetch_all_recalls.return_value = [
             {
-                "id_fiche": "001",
-                "gtin": "3760000000001",
-                "nom_de_la_marque_du_produit": "Brand",
+                "id": 1,
+                "identification_produits": ["3760000000001", "lot", "dlc", ""],
+                "marque_produit": "Brand",
             },
         ]
         rows = list(process_recalls(mock_client, check_off=True))
@@ -289,9 +338,9 @@ class TestProcessRecalls:
         mock_client = MagicMock()
         mock_client.fetch_all_recalls.return_value = [
             {
-                "id_fiche": "001",
-                "gtin": "3760000000001",
-                "nom_de_la_marque_du_produit": "Brand",
+                "id": 1,
+                "identification_produits": ["3760000000001", "lot", "dlc", ""],
+                "marque_produit": "Brand",
             },
         ]
         rows = list(process_recalls(mock_client, check_off=True))
@@ -303,7 +352,7 @@ class TestProcessRecalls:
         list(process_recalls(mock_client, since_date="2024-11-01",
                              check_off=False))
         mock_client.fetch_all_recalls.assert_called_once_with(
-            since_date="2024-11-01", category="Alimentation"
+            since_date="2024-11-01", category="alimentation"
         )
 
 

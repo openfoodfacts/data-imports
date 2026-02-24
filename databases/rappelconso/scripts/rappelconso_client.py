@@ -19,8 +19,8 @@ RAPPELCONSO_API_BASE_URL = (
     "/rappelconso-v2-gtin-espaces"
 )
 
-# Food product category in Rappel Conso
-FOOD_CATEGORY = "Alimentation"
+# Food product category in Rappel Conso (lowercase as returned by the API)
+FOOD_CATEGORY = "alimentation"
 
 # Maximum records per API request (OpenDataSoft limit)
 MAX_PAGE_SIZE = 100
@@ -104,16 +104,16 @@ class RappelConsoClient:
         params = {
             "limit": min(limit, MAX_PAGE_SIZE),
             "offset": offset,
-            "order_by": "date_de_publication desc",
+            "order_by": "date_publication desc",
         }
 
         filters = []
         if since_date:
             if hasattr(since_date, "isoformat"):
                 since_date = since_date.isoformat()
-            filters.append(f'date_de_publication >= "{since_date}"')
+            filters.append(f'date_publication >= "{since_date}"')
         if category:
-            filters.append(f'categorie_de_produit = "{category}"')
+            filters.append(f'categorie_produit = "{category}"')
 
         if filters:
             params["where"] = " AND ".join(filters)

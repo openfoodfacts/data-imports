@@ -30,7 +30,7 @@ class TestRappelConsoClient:
             assert client is not None
 
     def test_food_category_constant(self):
-        assert FOOD_CATEGORY == "Alimentation"
+        assert FOOD_CATEGORY == "alimentation"
 
     def test_max_page_size(self):
         assert MAX_PAGE_SIZE == 100
@@ -49,11 +49,14 @@ class TestRappelConsoClientRequests:
             "total_count": 2,
             "results": [
                 {
-                    "id_fiche": "001",
-                    "nom_de_la_marque_du_produit": "TestBrand",
-                    "gtin": "3760000000001",
-                    "categorie_de_produit": "Alimentation",
-                    "date_de_publication": "2024-11-29",
+                    "id": 21381,
+                    "numero_fiche": "2026-02-0250",
+                    "marque_produit": "TestBrand",
+                    "identification_produits": [
+                        "3760000000001", "lot42", "dlc", "2025-01-01", ""
+                    ],
+                    "categorie_produit": "alimentation",
+                    "date_publication": "2026-02-24T15:14:48+00:00",
                 },
             ],
         }
@@ -65,7 +68,7 @@ class TestRappelConsoClientRequests:
 
         assert result["total_count"] == 2
         assert len(result["results"]) == 1
-        assert result["results"][0]["id_fiche"] == "001"
+        assert result["results"][0]["id"] == 21381
 
     @patch("rappelconso_client.requests.Session")
     def test_fetch_recalls_with_date_filter(self, mock_session_cls):
@@ -79,13 +82,13 @@ class TestRappelConsoClientRequests:
 
         with RappelConsoClient() as client:
             client.fetch_recalls(
-                since_date="2024-11-01", category="Alimentation"
+                since_date="2024-11-01", category="alimentation"
             )
 
         call_kwargs = mock_session.get.call_args
         params = call_kwargs[1]["params"]
-        assert 'date_de_publication >= "2024-11-01"' in params["where"]
-        assert 'categorie_de_produit = "Alimentation"' in params["where"]
+        assert 'date_publication >= "2024-11-01"' in params["where"]
+        assert 'categorie_produit = "alimentation"' in params["where"]
 
     @patch("rappelconso_client.requests.Session")
     def test_fetch_recalls_date_object(self, mock_session_cls):
@@ -107,7 +110,7 @@ class TestRappelConsoClientRequests:
 
         call_kwargs = mock_session.get.call_args
         params = call_kwargs[1]["params"]
-        assert 'date_de_publication >= "2024-11-01"' in params["where"]
+        assert 'date_publication >= "2024-11-01"' in params["where"]
 
     @patch("rappelconso_client.requests.Session")
     def test_fetch_recalls_no_filters(self, mock_session_cls):

@@ -78,23 +78,43 @@ def check_off_product_exists(barcode, session=None):
         return None
 
 
-def extract_gtins(gtin_field):
-    """Extract individual GTINs from a (potentially space-separated) field.
+def extract_gtins(identification_produits):
+    """Extract GTINs from the identification_produits field.
 
-    The rappelconso-v2-gtin-espaces dataset stores multiple GTINs separated
-    by spaces within a single field.
+    The field is a list (from the JSON API) where each product recall group
+    has the format: [GTIN, lot_number, date_type, date_start, (date_end)].
+    Multiple groups are separated by a standalone "|" element; when the
+    next group HAS a GTIN, the "|" is prepended to it (e.g. "|3760001234567").
 
     Args:
-        gtin_field: String potentially containing one or more space-separated
-            GTINs, or None.
+        identification_produits: List (from API) or None.
 
     Returns:
-        List of individual GTIN strings (digits only, non-empty).
+        List of GTIN strings (digits only, length 8-14).
     """
-    if not gtin_field:
+    if not identification_produits:
         return []
-    parts = str(gtin_field).split()
-    return [p.strip() for p in parts if p.strip().isdigit()]
+
+    gtins = []
+    items = list(identification_produits) if not isinstance(
+        identification_produits, list
+    ) else identification_produits
+
+    for i, value in enumerate(items):
+        val = str(value).strip() if value else ""
+        if i == 0:
+            # First element of the first group is always the GTIN (may be "")
+            candidate = val
+        elif val.startswith("|"):
+            # Group separator: strip "|" to get GTIN of the next group
+            candidate = val[1:].strip()
+        else:
+            continue
+
+        if candidate.isdigit() and 8 <= len(candidate) <= 14:
+            gtins.append(candidate)
+
+    return gtins
 
 
 def build_off_row(record, gtin):
@@ -110,15 +130,15 @@ def build_off_row(record, gtin):
     Returns:
         Dict with OFF import fields.
     """
-    brand = (record.get("nom_de_la_marque_du_produit") or "").strip()
+    brand = (record.get("marque_produit") or "").strip()
     product_name = (
-        (record.get("noms_des_modeles_ou_references") or "").strip()
-        or (record.get("identification_des_produits") or "").strip()
+        (record.get("libelle") or "").strip()
+        or (record.get("modeles_ou_references") or "").strip()
         or brand
     )
     category = (
-        (record.get("sous_categorie_de_produit") or "").strip()
-        or (record.get("categorie_de_produit") or "").strip()
+        (record.get("sous_categorie_produit") or "").strip()
+        or (record.get("categorie_produit") or "").strip()
     )
 
     return {
@@ -128,9 +148,9 @@ def build_off_row(record, gtin):
         "categories": category,
         "countries": "France",
         "source": "Rappel Conso",
-        "rappelconso:fiche_id": record.get("id_fiche", ""),
+        "rappelconso:fiche_id": str(record.get("id", "")),
         "rappelconso:lien_fiche": record.get(
-            "lien_vers_la_fiche_rappelconso", ""
+            "lien_vers_la_fiche_rappel", ""
         ),
     }
 
@@ -157,12 +177,12 @@ def process_recalls(client, since_date=None, check_off=True,
     for record in client.fetch_all_recalls(
         since_date=since_date, category=FOOD_CATEGORY
     ):
-        gtin_field = record.get("gtin", "")
+        gtin_field = record.get("identification_produits", [])
         gtins = extract_gtins(gtin_field)
 
         if not gtins:
             logger.debug(
-                "No GTIN for record %s", record.get("id_fiche", "?")
+                "No GTIN for record %s", record.get("id", "?")
             )
             continue
 
