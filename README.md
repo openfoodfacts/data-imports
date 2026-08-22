@@ -6,7 +6,7 @@
 
 Welcome to the Open Food Facts Data Imports repository! 🌍 🥫 📊
 
-This repository tracks and manages external data imports from various sources to enrich the [Open Food Facts](https://world.openfoodfacts.org/) database. We collect nutritional data, product information, and ingredient details from food producers, apps, labels, public databases, and research institutions.
+This repository tracks and manages external data imports from various sources to enrich the [Open Food Facts](https://world.openfoodfacts.org/), Open Beauty Facts, Open Pet Food Facts and Open Products Facts databases. We collect product information from food/cosmetics/… producers, 3rd party apps, quality labels and schemes, public databases and research institutions.
 
 ## 📋 Table of Contents
 
@@ -209,16 +209,4 @@ The Open Food Facts database contents are licensed under the [Open Database Lice
 
 Individual datasets may have additional licenses - check each import's README for specific licensing terms.
 
----
 
-## 🌟 Acknowledgments
-
-Thank you to all contributors who help make Open Food Facts a comprehensive, open database of food products worldwide!
-
-- Food producers sharing their data openly
-- App developers providing product information
-- Research institutions contributing scientific data
-- Community members reviewing and improving imports
-- Everyone who adds products to Open Food Facts
-
-**Together, we're making food transparency a reality! 🥗**
