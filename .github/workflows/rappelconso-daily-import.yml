@@ -1,0 +1,78 @@
+name: Rappel Conso Daily Import
+
+on:
+  schedule:
+    # Run daily at 06:00 UTC (after the French government publishes overnight recalls)
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Number of days to look back'
+        required: true
+        default: '1'
+        type: string
+      no_off_check:
+        description: 'Skip Open Food Facts existence check'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r databases/rappelconso/scripts/requirements.txt
+
+      - name: Run Rappel Conso import
+        working-directory: databases/rappelconso/scripts
+        run: |
+          EXTRA_ARGS=""
+          if [ "${{ inputs.no_off_check }}" = "true" ]; then
+            EXTRA_ARGS="--no-off-check"
+          fi
+          python import_rappelconso.py \
+            --days ${{ inputs.days || '1' }} \
+            --output ../data/ \
+            --verbose \
+            $EXTRA_ARGS
+
+      - name: Display results
+        run: |
+          echo "=== Files generated ==="
+          ls -la databases/rappelconso/data/ || echo "(no files)"
+          echo ""
+          for f in databases/rappelconso/data/rappelconso_new_products_*.csv; do
+            if [ -f "$f" ]; then
+              echo "=== $f ==="
+              wc -l "$f"
+              head -5 "$f"
+              echo ""
+            fi
+          done
+
+      - name: Commit new products CSV
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add databases/rappelconso/data/
+          git diff --cached --quiet || git commit -m "chore: rappelconso daily import $(date -u +%Y-%m-%d)"
+          git push
+
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rappelconso-new-products-${{ github.run_id }}
+          path: databases/rappelconso/data/rappelconso_new_products_*.csv
+          retention-days: 30
