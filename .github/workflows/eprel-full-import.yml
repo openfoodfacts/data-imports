@@ -36,10 +36,10 @@ jobs:
     timeout-minutes: 360
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.6.0
         with:
           python-version: '3.12'
 
@@ -81,7 +81,7 @@ jobs:
           done
 
       - name: Upload data as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: eprel-full-${{ inputs.category }}
           path: databases/eprel/data/eprel_*
