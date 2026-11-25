@@ -12,6 +12,7 @@ If you want to explore how imports and background tasks work in [`openfoodfacts/
 
 - **Core import module:** [`lib/ProductOpener/Import.pm`](https://github.com/openfoodfacts/openfoodfacts-server/blob/main/lib/ProductOpener/Import.pm) — handles data ingestion and updating products in the database.
 - **Import scripts:** [`scripts/imports/`](https://github.com/openfoodfacts/openfoodfacts-server/tree/main/scripts/imports) — existing scripts for importing external and structured datasets.
+- **Using producers platform locally for dev:** [`docs/dev/explain-pro-dev-setup.md`](https://github.com/openfoodfacts/openfoodfacts-server/blob/main/docs/dev/explain-pro-dev-setup.md)
 - **Background import/export tasks:** [`docs/dev/how-to-debug-minion-import-and-export-tasks.md`](https://github.com/openfoodfacts/openfoodfacts-server/blob/main/docs/dev/how-to-debug-minion-import-and-export-tasks.md) — explains how asynchronous Minion import jobs are run and debugged.
 
 If you'd like to work on this, come chat with the team on [Open Food Facts Slack](https://slack.openfoodfacts.org) (e.g. `#producers-platform`) or reference the [Data Imports wiki page](https://wiki.openfoodfacts.org/Data_imports).
